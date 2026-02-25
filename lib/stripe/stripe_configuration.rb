@@ -203,6 +203,8 @@ module Stripe
     # identical configuration values.
     def key
       instance_variables
+        .sort
+        .reject { |variable| variable == :@logger }
         .collect { |variable| instance_variable_get(variable) }
         .join
     end
