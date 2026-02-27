@@ -1,9 +1,10 @@
 {
   "recommendations": [
     "EditorConfig.editorconfig", // default
-    "castwide.solargraph", // intellisense
+    "Shopify.ruby-lsp", // Modern Ruby LSP (Intellisense + more)
+    "Shopify.rubocop", // Modern Rubocop integration
     "sorbet.sorbet-vscode-extension", // typechecking, where applicable
-    "LoranKloeze.ruby-rubocop-revived", // linting
-    "SarahRidge.vscode-ruby-syntax" // Semantic syntax highlighting
+    "GitHub.vscode-pull-request-github", // Manage PRs and branches
+    "cschleiden.vscode-github-actions" // Monitor CI/CD status
   ]
 }

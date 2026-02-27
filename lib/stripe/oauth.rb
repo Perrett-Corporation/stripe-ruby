@@ -27,6 +27,8 @@ module Stripe
     end
 
     def self.authorize_url(params = {}, opts = {})
+      params = params.clone
+
       base = opts[:connect_base] || APIRequestor.active_requestor.config.connect_base
 
       path = "/oauth/authorize"
@@ -48,6 +50,7 @@ module Stripe
     end
 
     def self.deauthorize(params = {}, opts = {})
+      params = params.clone
       opts = Util.normalize_opts(opts)
       params[:client_id] = get_client_id(params)
       OAuthOperations.execute_resource_request(

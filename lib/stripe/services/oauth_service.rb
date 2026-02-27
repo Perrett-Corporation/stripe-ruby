@@ -3,6 +3,8 @@
 module Stripe
   class OAuthService < StripeService
     def authorize_url(params = {}, opts = {})
+      params = params.clone
+
       path = if opts[:express]
                "/express/oauth/authorize"
              else
@@ -11,7 +13,7 @@ module Stripe
 
       params[:client_id] = client_id(params)
 
-      params[:response_type] = "code" if params.include?(:response_type)
+      params[:response_type] ||= "code"
 
       query = Util.encode_parameters(params, :v1)
 
@@ -35,6 +37,7 @@ module Stripe
     end
 
     def deauthorize(params = {}, opts = {})
+      params = params.clone
       params[:client_id] = client_id(params)
 
       request(
