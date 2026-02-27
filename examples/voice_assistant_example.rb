@@ -51,7 +51,8 @@ def create_payment(amount, currency)
   )
 
   amount_formatted = amount / 100.0
-  "Successfully created a payment intent for #{amount_formatted} #{currency.upcase}. The payment intent ID is #{payment_intent.id}."
+  "Successfully created a payment intent for #{amount_formatted} #{currency.upcase}. " \
+    "The payment intent ID is #{payment_intent.id}."
 rescue Stripe::StripeError => e
   "There was an error creating the payment: #{e.message}"
 end
