@@ -18,9 +18,14 @@ def handle_voice_intent(intent_name, parameters)
   when "CheckBalance"
     check_balance
   when "CreatePayment"
-    amount = parameters[:amount]
-    currency = parameters[:currency] || "usd"
-    create_payment(amount, currency)
+    amount = parameters[:amount] || parameters["amount"]
+    currency = parameters[:currency] || parameters["currency"] || "usd"
+
+    if amount.nil?
+      "I'm sorry, I need to know the amount to create a payment."
+    else
+      create_payment(amount, currency)
+    end
   else
     "I'm sorry, I didn't understand that command."
   end
@@ -43,15 +48,19 @@ rescue Stripe::StripeError => e
 end
 
 def create_payment(amount, currency)
+  # Ensure amount is an integer
+  amount_in_cents = amount.to_i
+  currency_str = currency.to_s
+
   # Create a PaymentIntent using the Stripe API
   payment_intent = Stripe::PaymentIntent.create(
-    amount: amount,
-    currency: currency,
+    amount: amount_in_cents,
+    currency: currency_str,
     payment_method_types: ["card"]
   )
 
-  amount_formatted = amount / 100.0
-  "Successfully created a payment intent for #{amount_formatted} #{currency.upcase}. " \
+  amount_formatted = amount_in_cents / 100.0
+  "Successfully created a payment intent for #{amount_formatted} #{currency_str.upcase}. " \
     "The payment intent ID is #{payment_intent.id}."
 rescue Stripe::StripeError => e
   "There was an error creating the payment: #{e.message}"
