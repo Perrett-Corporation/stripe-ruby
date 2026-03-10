@@ -110,11 +110,10 @@ module Stripe
       return false if num_retries >= config.max_network_retries
 
       case error
-      when Net::OpenTimeout, Net::ReadTimeout
+      when Net::OpenTimeout, Net::ReadTimeout,
+           EOFError, Errno::ECONNREFUSED, Errno::ECONNRESET,
+           Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError
         # Retry on timeout-related problems (either on open or read).
-        true
-      when EOFError, Errno::ECONNREFUSED, Errno::ECONNRESET, # rubocop:todo Lint/DuplicateBranch
-            Errno::EHOSTUNREACH, Errno::ETIMEDOUT, SocketError
         # Destination refused the connection, the connection was reset, or a
         # variety of other connection failures. This could occur from a single
         # saturated server, so retry in case it's intermittent.
@@ -643,7 +642,7 @@ module Stripe
 
         if e.is_a?(Stripe::StripeError)
           error_context = context.dup_from_response_headers(e.http_headers)
-          http_status = resp.code.to_i
+          http_status = resp&.code&.to_i
           log_response(error_context, request_start,
                        e.http_status, e.http_body, resp)
         else
@@ -661,14 +660,12 @@ module Stripe
         end
 
         case e
-        when Stripe::StripeError
-          raise
         when *NETWORK_ERROR_MESSAGES_MAP.keys
           handle_network_error(e, error_context, num_retries, base_url)
 
         # Only handle errors when we know we can do so, and re-raise otherwise.
         # This should be pretty infrequent.
-        else # rubocop:todo Lint/DuplicateBranch
+        else
           raise
         end
       end
@@ -807,8 +804,14 @@ module Stripe
         when "idempotency_error"
           IdempotencyError.new(error_data[:message], **opts)
         else
+          message = error_data[:message]
+          # Provide hint for Google Pay related errors
+          if message&.include?("Google Pay")
+            message += " (Check that your Google Pay integration is enabled and configured correctly)"
+          end
+
           InvalidRequestError.new(
-            error_data[:message], error_data[:param],
+            message, error_data[:param],
             **opts
           )
         end
@@ -820,7 +823,12 @@ module Stripe
           **opts
         )
       when 403
-        PermissionError.new(error_data[:message], **opts)
+        message = error_data[:message]
+        # Provide hint for Google Pay related errors
+        if message&.include?("Google Pay")
+          message += " (Check that your Google Pay integration is enabled and configured correctly)"
+        end
+        PermissionError.new(message, **opts)
       when 429
         RateLimitError.new(error_data[:message], **opts)
       else
