@@ -1,8 +1,6 @@
-require "stripe"
+# frozen_string_literal: true
 
-# Mock logger to ensure it has different object IDs if used
-Logger.new(STDOUT)
-Logger.new(STDOUT)
+require "stripe"
 
 config1 = Stripe::StripeConfiguration.new
 config1.api_key = "sk_test_1"
