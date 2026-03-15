@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Entity Risk Profiles</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .risk-Critical { color: red; font-weight: bold; }
+    .risk-High { color: orange; font-weight: bold; }
+    .risk-Medium { color: #fdda0d; font-weight: bold; }
+    .risk-Low { color: green; font-weight: bold; }
+    .btn { padding: 5px 10px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; text-decoration: none;}
+  </style>
+</head>
+<body>
+  <h1>Adverse Media Screening Results</h1>
+  <p>Real-time monitoring of entities related to current SARs/AML reviews.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Entity</th>
+        <th>Risk Level</th>
+        <th>Last Screened</th>
+        <th>Negative News / Hits</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @screened_entities.each do |result| %>
+        <tr>
+          <td><%= result[:entity] %></td>
+          <td class="risk-<%= result[:risk_level] %>"><%= result[:risk_level] %></td>
+          <td><%= result[:last_screened].strftime("%Y-%m-%d %H:%M:%S") %></td>
+          <td>
+            <% if result[:hits].empty? %>
+              No adverse media found.
+            <% else %>
+              <ul>
+                <% result[:hits].each do |hit| %>
+                  <li>
+                    <strong><%= hit[:source] %> (<%= hit[:date] %>):</strong> <%= hit[:snippet] %>
+                    <span style="font-size: 0.8em; color: gray;">[<%= hit[:sentiment] %>]</span>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <br>
+  <a href="/" class="btn">Back to Dashboard</a>
+</body>
+</html>

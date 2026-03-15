@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Corporate Structure Map - <%= @case_id %></title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .risk-alert { color: red; font-weight: bold; margin-bottom: 5px; }
+    .risk-panel { border: 1px solid #ddd; padding: 10px; margin-top: 20px; background-color: #fff8f8; }
+  </style>
+</head>
+<body>
+  <h1>Corporate Structure Visualization</h1>
+  <h2>Case: <%= @case_id %></h2>
+  <a href="/">Back to Dashboard</a>
+
+  <div class="mermaid">
+    graph TD
+    <% @nodes.each do |node| %>
+      <%= node[:id] %>["<%= node[:type] == 'individual' ? '👤' : '🏢' %> <%= node[:label] %><br/><small><%= node[:country] %></small>"]
+      <% if node[:type] == 'target' %>
+        style <%= node[:id] %> fill:#f9f,stroke:#333,stroke-width:4px
+      <% end %>
+    <% end %>
+
+    <% @edges.each do |edge| %>
+      <%= edge[:from] %> -->|<%= edge[:label] %>| <%= edge[:to] %>
+    <% end %>
+
+    <% @risks.each do |risk| %>
+      style <%= risk[:node_id] %> fill:#ffcccc,stroke:#red,stroke-width:2px
+    <% end %>
+  </div>
+
+  <div class="risk-panel">
+    <h3>🚨 Automated Risk Detection</h3>
+    <ul>
+      <% if @risks.empty? %>
+        <li>No shell company risks detected.</li>
+      <% else %>
+        <% @risks.each do |risk| %>
+          <li class="risk-alert">
+            [<%= risk[:severity].upcase %>] <%= risk[:message] %>
+          </li>
+        <% end %>
+      <% end %>
+    </ul>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true });
+  </script>
+</body>
+</html>
