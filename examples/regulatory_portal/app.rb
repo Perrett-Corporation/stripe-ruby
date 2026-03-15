@@ -16,6 +16,10 @@ require_relative "lib/task_management_service"
 require_relative "lib/audit_log_service"
 require_relative "lib/screening_service"
 require_relative "lib/compliance_aggregator"
+require_relative "lib/sanctions_screener"
+require_relative "lib/pep_screener"
+require_relative "lib/entity_risk_score"
+require_relative "lib/entity_ingestion_workflow"
 
 # Configuration
 set :port, 4567
@@ -417,5 +421,135 @@ get "/generate_sar/:entity_id" do
   )
   
   erb :sar_report
+end
+
+# ── Entity Ingestion & Risk Scoring ──────────────────────────────────────────
+
+# List ingested entities and their risk scores
+get "/entity_ingestion" do
+  @ingested_entities  = EntityIngestionWorkflow.list
+  @risk_scores        = EntityRiskScore.all
+  @high_risk_entities = EntityRiskScore.high_risk
+  erb :entity_ingestion
+end
+
+# Form to ingest a new entity
+get "/entity_ingestion/new" do
+  erb :entity_ingestion
+end
+
+# Process new entity ingestion
+post "/entity_ingestion" do
+  entity_id = params[:entity_id].to_s.strip
+  entity_id = "ent_#{Time.now.to_i}" if entity_id.empty?
+
+  begin
+    result = EntityIngestionWorkflow.ingest(
+      id:                  entity_id,
+      name:                params[:name].to_s.strip,
+      entity_type:         params[:entity_type] || "individual",
+      country:             params[:country].to_s.strip,
+      date_of_birth:       params[:date_of_birth].to_s.strip.empty? ? nil : params[:date_of_birth],
+      registration_number: params[:registration_number].to_s.strip.empty? ? nil : params[:registration_number]
+    )
+
+    risk_level = result[:risk_record].risk_level
+    score      = result[:risk_record].composite_score
+    session[:message] = "Entity '#{params[:name]}' ingested. Risk Score: #{score}/100 (#{risk_level})."
+  rescue StandardError => e
+    session[:error] = "Ingestion failed: #{e.message}"
+  end
+
+  redirect "/entity_ingestion"
+end
+
+# Re-screen an existing entity
+post "/entity_ingestion/:entity_id/rescreen" do
+  begin
+    result     = EntityIngestionWorkflow.rescreen(params[:entity_id])
+    risk_level = result[:risk_record].risk_level
+    score      = result[:risk_record].composite_score
+    session[:message] = "Re-screening complete. Risk Score: #{score}/100 (#{risk_level})."
+  rescue StandardError => e
+    session[:error] = "Re-screening failed: #{e.message}"
+  end
+  redirect "/entity_ingestion"
+end
+
+# ── Document Management ───────────────────────────────────────────────────────
+
+# List all documents in the vault
+get "/documents" do
+  @all_documents  = DocumentVaultService::DOCUMENT_REGISTRY.values
+  @open_cases     = InvestigationService.list_open_cases
+  @categories     = DocumentVaultService::CATEGORIES
+  erb :document_management
+end
+
+# Upload a new document
+post "/documents/upload" do
+  unless params[:file] && params[:file][:tempfile]
+    session[:error] = "No file selected."
+    redirect "/documents"
+  end
+
+  file_info = params[:file]
+  content   = file_info[:tempfile].read
+  filename  = file_info[:filename]
+  doc_type  = file_info[:type] || "application/octet-stream"
+  category  = params[:category] || "Other"
+  entity_id = params[:entity_id].to_s.strip
+  case_id   = params[:case_id].to_s.strip
+  run_ocr   = params[:run_ocr] == "1"
+
+  begin
+    doc = DocumentVaultService.upload_content(
+      entity_id: entity_id.empty? ? "unassigned" : entity_id,
+      case_id:   case_id.empty?   ? nil          : case_id,
+      filename:  filename,
+      content:   content,
+      doc_type:  doc_type,
+      category:  category,
+      run_ocr:   run_ocr
+    )
+
+    AuditLogService.log(
+      user_id:   $current_officer_id,
+      action:    "DOCUMENT_UPLOADED",
+      details:   { filename: filename, category: category, ocr: run_ocr },
+      entity_id: entity_id.empty? ? nil : entity_id
+    )
+
+    session[:message] = "Document '#{filename}' uploaded successfully (ID: #{doc.id})."
+  rescue StandardError => e
+    session[:error] = "Upload failed: #{e.message}"
+  end
+
+  redirect "/documents"
+end
+
+# Run OCR on an existing document
+post "/documents/:doc_id/ocr" do
+  begin
+    result = DocumentVaultService.process_ocr(params[:doc_id])
+    patterns = result[:detected_patterns].map { |p| p[:label] }.join(", ")
+    msg = "OCR complete for document #{params[:doc_id]}."
+    msg += " Patterns detected: #{patterns}." unless patterns.empty?
+    session[:message] = msg
+  rescue StandardError => e
+    session[:error] = "OCR failed: #{e.message}"
+  end
+  redirect "/documents"
+end
+
+# Tag a document to a case
+post "/documents/:doc_id/tag_case" do
+  begin
+    DocumentVaultService.tag_document_to_case(params[:doc_id], params[:case_id])
+    session[:message] = "Document #{params[:doc_id]} tagged to case #{params[:case_id]}."
+  rescue StandardError => e
+    session[:error] = "Tagging failed: #{e.message}"
+  end
+  redirect "/documents"
 end
 
