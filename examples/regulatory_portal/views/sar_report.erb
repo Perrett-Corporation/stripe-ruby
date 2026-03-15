@@ -1,0 +1,41 @@
+<style>
+    body { font-family: sans-serif; padding: 20px; background: #e9ecef; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .button { padding: 8px 16px; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .button.primary { background: #007bff; }
+    .card { background: white; padding: 40px; margin: 0 auto; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .meta { border-bottom: 1px solid #ddd; padding-bottom: 20px; margin-bottom: 20px; }
+    .badge { background: #ffc107; color: black; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    h2 { text-align: center; }
+</style>
+<div class="header">
+  <h1>Generated SAR Draft</h1>
+  <div class="actions">
+    <a href="/entity_timeline/<%= @entity_id %>" class="button">Back to Case</a>
+    <button onclick="window.print()" class="button primary">Submit Draft</button>
+  </div>
+</div>
+
+<div class="card sar-draft">
+  <h2>Suspicious Activity Report (SAR)</h2>
+
+  <p class="meta">
+    <strong>Entity:</strong> <%= @entity_name %> (<%= @entity_id %>)<br />
+    <strong>Filing Officer:</strong> <%= @officer_id %><br />
+    <strong>Status:</strong> DRAFT <span class="badge warning">Needs Review</span>
+  </p>
+
+  <div class="auto-generated-narrative">
+    <h3>Part V: Narrative</h3>
+    <textarea rows="20" cols="80" style="width:100%; font-family: monospace; padding: 10px; line-height: 1.5;"><%= @narrative %></textarea>
+  </div>
+
+  <div class="supporting-docs">
+    <h3>Part VI: Supporting Documentation</h3>
+    <ul>
+      <% @documents.each do |doc| %>
+        <li><a href="/vault/download/<%= doc[:id] %>"><%= doc[:filename] %></a> (Uploaded: <%= doc[:uploaded_at] %>)</li>
+      <% end %>
+    </ul>
+  </div>
+</div>

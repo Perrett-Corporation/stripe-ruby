@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Regulatory Submission Portal</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .btn { padding: 5px 10px; text-decoration: none; border-radius: 3px; color: white; margin-right: 5px; cursor: pointer; border: none; }
+    .btn-primary { background-color: #007bff; }
+    .btn-success { background-color: #28a745; }
+    .btn-warning { background-color: #ffc107; color: black; }
+    .btn-danger { background-color: #dc3545; }
+    .alert { padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    .alert-info { background-color: #d1ecf1; color: #0c5460; }
+    .alert-danger { background-color: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>Compliance Officer Dashboard</h1>
+
+  <% if session[:message] %>
+    <div class="alert alert-info"><%= session[:message] %></div>
+    <% session[:message] = nil %>
+  <% end %>
+
+  <% if session[:error] %>
+    <div class="alert alert-danger"><%= session[:error] %></div>
+    <% session[:error] = nil %>
+  <% end %>
+
+  <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #e9ecef;">
+    <h3 style="margin-top: 0;">Officer Requirements</h3>
+
+    <div style="display: flex; gap: 20px;">
+        <div>
+            <strong>Compliance Training:</strong>
+            <% if @training_status %>
+                <span class="text-success" style="color: green;">Complete</span>
+            <% else %>
+                <span class="text-danger" style="color: red;">Action Required</span>
+            <% end %>
+            <br>
+            <a href="/training" style="font-size: 0.9em;">View Modules</a>
+        </div>
+
+        <div>
+            <strong>Identity Verification:</strong>
+            <% if @identity_verified %>
+                <span class="text-success" style="color: green;">Verified</span>
+            <% else %>
+                <span class="text-danger" style="color: red;">Not Verified</span>
+            <% end %>
+            <br>
+            <a href="/verify_identity" style="font-size: 0.9em;">Perform Check</a>
+        </div>
+
+        <div>
+            <strong>Risk Monitoring:</strong>
+            <br>
+            <a href="/risk_profiles" style="font-size: 0.9em;">View Adverse Media</a>
+        </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 20px;">
+    <a href="/sar/new" class="btn btn-primary">New SAR</a>
+    <a href="/aml/new" class="btn btn-primary">New AML Review</a>
+    <a href="/escalations" class="btn btn-danger" style="margin-left: 10px;">Case Escalations (Supervisor)</a>
+  </div>
+
+  <div style="margin-bottom: 20px; padding: 10px; background-color: #f1f1f1; border-radius: 4px;">
+    <strong>New Features:</strong>
+    <a href="/tasks" class="btn btn-warning" style="margin-left: 10px;">My Tasks</a>
+    <a href="/audit_log" class="btn btn-warning" style="margin-left: 10px;">Audit Logs</a>
+  </div>
+
+  <% if @automated_actions && !@automated_actions.empty? %>
+    <h2>Automated Compliance Actions (Workflow Engine)</h2>
+    <table style="border: 2px solid #dc3545; margin-bottom: 30px;">
+      <thead>
+        <tr>
+          <th style="background-color: #f8d7da; color: #721c24;">Action Type</th>
+          <th style="background-color: #f8d7da; color: #721c24;">Entity ID</th>
+          <th style="background-color: #f8d7da; color: #721c24;">Reason</th>
+          <th style="background-color: #f8d7da; color: #721c24;">Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @automated_actions.each do |action| %>
+          <tr>
+            <td style="font-weight: bold;"><%= action[:type] %></td>
+            <td><%= action[:entity_id] %></td>
+            <td><%= action[:reason] %></td>
+            <td><%= action[:timestamp].strftime("%Y-%m-%d %H:%M:%S") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <h2>Recent Reports</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Type</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if @reports.empty? %>
+        <tr><td colspan="5">No reports generated yet.</td></tr>
+      <% else %>
+        <% @reports.each do |report| %>
+          <tr>
+            <td><%= report.report_id %></td>
+            <td><%= report.type %></td>
+            <td><%= report.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            <td>
+              <span style="font-weight: bold; color: <%= report.status == 'signed' ? 'green' : 'orange' %>">
+                <%= report.status.upcase %>
+              </span>
+            </td>
+            <td>
+              <% if report.status == 'draft' %>
+                <form action="/reports/<%= report.report_id %>/sign" method="post" style="display:inline;">
+                  <button type="submit" class="btn btn-warning">Sign (Digital)</button>
+                </form>
+              <% else %>
+                <a href="/reports/<%= report.report_id %>/export/xml" class="btn btn-secondary" style="background-color: #6c757d;">XML</a>
+                <a href="/reports/<%= report.report_id %>/export/pdf" class="btn btn-secondary" style="background-color: #6c757d;">PDF</a>
+                <form action="/reports/<%= report.report_id %>/submit" method="post" style="display:inline;">
+                  <button type="submit" class="btn btn-success">Submit to Authority</button>
+                </form>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      <% end %>
+    </tbody>
+  </table>
+</body>
+</html>

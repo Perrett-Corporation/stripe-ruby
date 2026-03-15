@@ -1,0 +1,88 @@
+<style>
+    body { font-family: sans-serif; padding: 20px; background: #f8f9fa; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .button { padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+    .button.small { padding: 4px 8px; font-size: 0.9em; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .screening-result { border: 1px solid #dc3545; padding: 15px; margin-top: 15px; background: #fff8f8; }
+</style>
+<div class="header">
+  <h1>Case: <%= @entity_name %> (<%= @entity_id %>)</h1>
+  <div class="actions">
+    <a href="/generate_sar/<%= @entity_id %>" class="button primary">Generate SAR Draft</a>
+    <a href="/tasks/new?entity_id=<%= @entity_id %>" class="button">Create Task</a>
+  </div>
+</div>
+
+<div class="card timeline-container">
+  <h2>Compliance Timeline</h2>
+
+  <% if @timeline.empty? %>
+    <p>No activity recorded for this entity.</p>
+  <% else %>
+    <div class="timeline">
+    <% @timeline.each do |event| %>
+      <div class="event <%= event[:severity] %>">
+        <div class="timestamp"><%= event[:timestamp] %></div>
+        <div class="marker"></div>
+        <div class="content">
+          <h4><%= event[:type].upcase %></h4>
+          <p><%= event[:description] %></p>
+          <small>By: <%= event[:user] %></small>
+        </div>
+      </div>
+    <% end %>
+    </div>
+  <% end %>
+
+  <br />
+  <hr />
+
+  <h2>Real-time Screening</h2>
+  <a href="/screen/<%= @entity_id %>?name=<%= @entity_name %>" class="button small">Run New Check</a>
+
+  <% if @screening_result %>
+    <div class="screening-result">
+      <h3>Risk Score: <%= @screening_result[:risk_score] %></h3>
+      <ul>
+      <% @screening_result[:hits].each do |hit| %>
+        <li style="color: red;">[<%= hit[:list] %>] <%= hit[:reason] %></li>
+      <% end %>
+      </ul>
+      <% if @screening_result[:adverse_media].any? %>
+        <h4>Adverse Media:</h4>
+        <% @screening_result[:adverse_media].each do |media| %>
+          <div class="media-hit">
+            <a href="<%= media[:url] %>"><%= media[:title] %></a> (<%= media[:date] %>)
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.timeline {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid #ccc;
+  margin-left: 20px;
+  padding-left: 20px;
+}
+.event {
+  margin-bottom: 20px;
+  position: relative;
+}
+.marker {
+  width: 12px;
+  height: 12px;
+  background: #ccc;
+  border-radius: 50%;
+  position: absolute;
+  left: -27px;
+  top: 5px;
+}
+.event.danger .marker { background: #E53935; }
+.event.success .marker { background: #43A047; }
+.event.warning .marker { background: #FB8C00; }
+</style>

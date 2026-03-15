@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Intelligent SAR Draft</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .section { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 5px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    textarea { width: 100%; height: 200px; padding: 10px; border: 1px solid #ccc; font-family: monospace; }
+    input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; margin-bottom: 10px; }
+    .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8em; color: white; }
+    .badge-High { background-color: orange; }
+    .badge-Critical { background-color: red; }
+    .badge-Medium { background-color: #fdda0d; color: black; }
+    .btn { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .warning { background-color: #fff3cd; color: #856404; padding: 10px; border: 1px solid #ffeeba; border-radius: 4px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Review Intelligent SAR Draft</h1>
+    <div class="warning">
+        <strong>Auto-Draft Mode:</strong> This report has been pre-filled with data from Investigation <strong><%= @case_data[:id] %></strong>, adverse media hits, and transaction logs. Please review all fields carefully before finalizing.
+    </div>
+
+    <form action="/sar/finalize" method="post">
+      <div class="section">
+        <h2>Subject Information (Auto-Populated)</h2>
+        <label>Subject Name:</label>
+        <input type="text" name="subject_name" value="<%= @case_data[:subject_name] %>">
+
+        <label>Address:</label>
+        <input type="text" name="subject_address" value="<%= @case_data[:subject_address] %>">
+
+        <label>Customer ID:</label>
+        <input type="text" name="subject_id" value="<%= @case_data[:subject_id] %>" readonly style="background-color: #eee;">
+
+        <p>Risk Profile: <span class="badge badge-<%= @risk_profile[:risk_level] %>"><%= @risk_profile[:risk_level] %></span></p>
+      </div>
+
+      <div class="section">
+        <h2>Transaction Activity</h2>
+        <p>This report includes <strong><%= @related_transactions.count %></strong> transaction(s) linked to this case.</p>
+        <input type="hidden" name="transaction_ids" value="<%= @related_transactions.map{ |t| t[:id] }.join(',') %>">
+        <ul>
+            <% @related_transactions.each do |tx| %>
+                <li><%= tx[:id] %>: <%= tx[:amount] %> <%= tx[:currency].upcase %> (<%= Time.at(tx[:created]).strftime("%Y-%m-%d") %>) - <%= tx[:suspicion_reason] %></li>
+            <% end %>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Narrative / Conclusion</h2>
+        <label>Generated Narrative (Editable):</label>
+        <p style="font-size: 0.9em; color: #666;">Generated using intelligence from Case Notes + Risk Profile + Transaction Patterns.</p>
+        <textarea name="narrative"><%= @draft_narrative %></textarea>
+      </div>
+
+      <button type="submit" class="btn">Finalize Report</button>
+      <a href="/sar/new" style="margin-left: 10px;">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>
