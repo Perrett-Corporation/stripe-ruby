@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Compliance Training</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .module { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+    .completed { background-color: #e6fffa; border-color: #38a169; }
+    .pending { background-color: #fff5f5; border-color: #e53e3e; }
+    .btn { padding: 5px 10px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>Officer Compliance Training</h1>
+  <p>Status:
+    <% if @is_compliant %>
+        <span style="color: green; font-weight: bold;">Compliant</span>
+    <% else %>
+        <span style="color: red; font-weight: bold;">Non-Compliant</span> - Please complete all required modules to sign reports.
+    <% end %>
+  </p>
+
+  <% @training_status.each do |mod| %>
+    <div class="module <%= mod[:completed] ? 'completed' : 'pending' %>">
+      <h3><%= mod[:title] %></h3>
+      <p>Status: <%= mod[:completed] ? "Completed" : "Pending" %></p>
+
+      <% unless mod[:completed] %>
+        <form action="/training/complete" method="post">
+          <input type="hidden" name="training_id" value="<%= mod[:id] %>">
+          <button type="submit" class="btn">Start & Complete Module</button>
+        </form>
+      <% else %>
+        <button class="btn" disabled>Completed</button>
+      <% end %>
+    </div>
+  <% end %>
+
+  <br>
+  <a href="/" style="display: block; margin-top: 20px;">Return to Dashboard</a>
+</body>
+</html>

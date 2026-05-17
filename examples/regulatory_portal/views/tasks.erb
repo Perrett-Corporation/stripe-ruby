@@ -1,0 +1,82 @@
+<style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .button { padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+    .button.secondary { background: #6c757d; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; color: white; background: #28a745; }
+    .badge.high { background: #dc3545; }
+    .badge.urgent { background: #dc3545; font-weight: bold; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+</style>
+<div class="header">
+  <h1>Remediation Tasks</h1>
+  <div class="actions">
+    <a href="/tasks/new" class="button">Assign New Task</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>My Pending Tasks</h2>
+  <% if @my_tasks.empty? %>
+    <p>No pending tasks assigned to you.</p>
+  <% else %>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Entity</th>
+          <th>Priority</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @my_tasks.each do |task| %>
+          <tr class="<%= task.priority.downcase %>">
+            <td><%= task.id %></td>
+            <td><%= task.title %></td>
+            <td><a href="/entity_timeline/<%= task.entity_id %>"><%= task.entity_id %></a></td>
+            <td><span class="badge <%= task.priority.downcase %>"><%= task.priority %></span></td>
+            <td><%= task.due_date %></td>
+            <td><%= task.status %></td>
+            <td>
+              <% if task.status != :completed %>
+                <form action="/tasks/<%= task.id %>/complete" method="post" style="display:inline;">
+                  <button type="submit">Complete</button>
+                </form>
+                <form action="/tasks/<%= task.id %>/escalate" method="post" style="display:inline;">
+                  <button type="submit" class="secondary">Escalate</button>
+                </form>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <h2>All Open Tasks</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Assignee</th>
+        <th>Task</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @all_tasks.each do |task| %>
+        <tr>
+          <td><%= task.assignee_id %></td>
+          <td><%= task.title %></td>
+          <td><%= task.status %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

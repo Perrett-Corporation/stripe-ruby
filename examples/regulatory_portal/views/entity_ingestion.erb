@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Entity Ingestion & Risk Scoring</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f8f9fa; }
+    h1, h2, h3 { color: #333; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 0.9em; }
+    th { background-color: #f4f4f4; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+    .badge-critical { background: #dc3545; color: white; }
+    .badge-high     { background: #fd7e14; color: white; }
+    .badge-medium   { background: #ffc107; color: black; }
+    .badge-low      { background: #28a745; color: white; }
+    .btn { padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 0.9em; }
+    .btn-danger  { background: #dc3545; }
+    .btn-warning { background: #ffc107; color: black; }
+    .btn-success { background: #28a745; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8em; }
+    .alert { padding: 12px; margin-bottom: 15px; border-radius: 5px; }
+    .alert-info    { background: #d1ecf1; color: #0c5460; }
+    .alert-danger  { background: #f8d7da; color: #721c24; }
+    .alert-warning { background: #fff3cd; color: #856404; }
+    form.inline { display: inline; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 0.9em; }
+    input[type=text], input[type=date], select {
+      width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .risk-bar { height: 8px; border-radius: 4px; background: #e9ecef; }
+    .risk-fill { height: 100%; border-radius: 4px; }
+    .highlight-row td { background: #fff8f8; }
+  </style>
+</head>
+<body>
+  <h1>Entity Ingestion &amp; Risk Scoring</h1>
+  <p><a href="/">&larr; Back to Dashboard</a></p>
+
+  <% if session[:message] %>
+    <div class="alert alert-info"><%= session[:message] %></div>
+    <% session[:message] = nil %>
+  <% end %>
+  <% if session[:error] %>
+    <div class="alert alert-danger"><%= session[:error] %></div>
+    <% session[:error] = nil %>
+  <% end %>
+
+  <div class="grid-2">
+    <!-- Ingestion Form -->
+    <div class="card">
+      <h2>Ingest New Entity</h2>
+      <p style="font-size:0.85em; color:#555;">
+        Submit entity details to automatically screen against global watchlists,
+        PEP registers, and adverse media databases. The composite risk score is
+        updated immediately and alerts are triggered for high-risk matches.
+      </p>
+      <form action="/entity_ingestion" method="post">
+        <div class="form-group">
+          <label>Entity ID (leave blank to auto-generate)</label>
+          <input type="text" name="entity_id" placeholder="e.g. cus_abc123">
+        </div>
+        <div class="form-group">
+          <label>Full Legal Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Acme Holdings Ltd">
+        </div>
+        <div class="form-group">
+          <label>Entity Type</label>
+          <select name="entity_type">
+            <option value="individual">Individual</option>
+            <option value="company">Company</option>
+            <option value="trust">Trust</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Country of Incorporation / Residence</label>
+          <input type="text" name="country" placeholder="e.g. United Kingdom">
+        </div>
+        <div class="form-group">
+          <label>Date of Birth (individuals only)</label>
+          <input type="date" name="date_of_birth">
+        </div>
+        <div class="form-group">
+          <label>Registration Number (companies only)</label>
+          <input type="text" name="registration_number" placeholder="e.g. 12345678">
+        </div>
+        <button type="submit" class="btn btn-success">Ingest &amp; Screen Entity</button>
+      </form>
+    </div>
+
+    <!-- High-Risk Summary -->
+    <div class="card">
+      <h2>High-Risk Entities</h2>
+      <% if @high_risk_entities && @high_risk_entities.any? %>
+        <% @high_risk_entities.each do |r| %>
+          <div style="border-left: 4px solid <%= r.risk_level == 'Critical' ? '#dc3545' : '#fd7e14' %>; padding: 10px; margin-bottom: 12px; background: #fff;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong><%= r.entity_name %></strong>
+              <span class="badge badge-<%= r.risk_level.downcase %>"><%= r.risk_level %></span>
+            </div>
+            <div style="margin: 6px 0;">
+              <div class="risk-bar">
+                <div class="risk-fill" style="width:<%= r.composite_score %>%; background:<%= r.composite_score >= 90 ? '#dc3545' : '#fd7e14' %>;"></div>
+              </div>
+              <small>Score: <%= r.composite_score %>/100 &bull; Last updated: <%= r.last_updated.strftime('%Y-%m-%d %H:%M') %></small>
+            </div>
+            <small>
+              Watchlist: <%= r.watchlist_score %> &bull;
+              PEP: <%= r.pep_score %> &bull;
+              Adverse Media: <%= r.adverse_media_score %>
+            </small>
+          </div>
+        <% end %>
+      <% else %>
+        <p style="color:#555;">No high-risk entities detected yet.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- All Risk Scores Table -->
+  <div class="card">
+    <h2>All Screened Entities</h2>
+    <% if @risk_scores && @risk_scores.any? %>
+      <table>
+        <thead>
+          <tr>
+            <th>Entity ID</th>
+            <th>Name</th>
+            <th>Risk Level</th>
+            <th>Score</th>
+            <th>Watchlist</th>
+            <th>PEP</th>
+            <th>Media</th>
+            <th>Last Screened</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @risk_scores.each do |r| %>
+            <tr class="<%= r.composite_score >= 70 ? 'highlight-row' : '' %>">
+              <td><code><%= r.entity_id %></code></td>
+              <td><%= r.entity_name %></td>
+              <td><span class="badge badge-<%= r.risk_level.downcase %>"><%= r.risk_level %></span></td>
+              <td>
+                <strong><%= r.composite_score %></strong>/100
+                <div class="risk-bar" style="width:80px; display:inline-block; vertical-align:middle; margin-left:6px;">
+                  <div class="risk-fill" style="width:<%= r.composite_score %>%; background:<%= r.composite_score >= 90 ? '#dc3545' : r.composite_score >= 70 ? '#fd7e14' : r.composite_score >= 40 ? '#ffc107' : '#28a745' %>;"></div>
+                </div>
+              </td>
+              <td>
+                <%= r.watchlist_score %>
+                <% if r.watchlist_hits.any? %>
+                  <br><small style="color:#dc3545;"><%= r.watchlist_hits.map { |h| h[:source] }.join(', ') %></small>
+                <% end %>
+              </td>
+              <td>
+                <%= r.pep_score %>
+                <% if r.pep_hits.any? %>
+                  <br><small style="color:#fd7e14;"><%= r.pep_hits.map { |h| h[:category] }.join(', ') %></small>
+                <% end %>
+              </td>
+              <td>
+                <%= r.adverse_media_score %>
+                <% if r.adverse_media_hits.any? %>
+                  <br><small style="color:#856404;"><%= r.adverse_media_hits.count %> hit(s)</small>
+                <% end %>
+              </td>
+              <td><small><%= r.last_updated.strftime('%Y-%m-%d %H:%M') %></small></td>
+              <td>
+                <form action="/entity_ingestion/<%= r.entity_id %>/rescreen" method="post" class="inline">
+                  <button type="submit" class="btn btn-warning btn-sm">Re-screen</button>
+                </form>
+                <a href="/entity_timeline/<%= r.entity_id %>" class="btn btn-sm" style="margin-left:4px;">Timeline</a>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p>No entities have been screened yet. Use the form above to ingest a new entity.</p>
+    <% end %>
+  </div>
+
+  <!-- Ingested Entity Log -->
+  <% if @ingested_entities && @ingested_entities.any? %>
+  <div class="card">
+    <h2>Ingestion Log</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Name</th><th>Type</th><th>Country</th><th>Ingested At</th></tr>
+      </thead>
+      <tbody>
+        <% @ingested_entities.each do |e| %>
+          <tr>
+            <td><code><%= e.id %></code></td>
+            <td><%= e.name %></td>
+            <td><%= e.entity_type %></td>
+            <td><%= e.country %></td>
+            <td><small><%= e.ingested_at.strftime('%Y-%m-%d %H:%M:%S') %></small></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% end %>
+</body>
+</html>
