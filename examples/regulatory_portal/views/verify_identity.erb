@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Identity Verification</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; text-align: center; }
+    .camera-feed { width: 100%; height: 300px; background-color: #eee; margin-bottom: 20px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; }
+    .btn { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .status { margin-top: 20px; font-weight: bold; }
+  </style>
+  <script>
+    // Simulate camera access
+    function startVerification() {
+        document.getElementById('status').innerText = "Analyzing biometrics...";
+        document.getElementById('status').style.color = "blue";
+
+        setTimeout(() => {
+            document.forms['verification-form'].submit();
+        }, 1500);
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Identity Verification</h1>
+    <p>Please permit webcam access to verify your identity before signing reports.</p>
+
+    <div class="camera-feed">
+      <p>[ Webcam Simulation ]</p>
+    </div>
+
+    <form name="verification-form" action="/verify_identity" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="image_data" value="simulated_scan_success">
+        <button type="button" class="btn" onclick="startVerification()">Verify Identity</button>
+    </form>
+
+    <div id="status" class="status"></div>
+    <a href="/" style="display: block; margin-top: 20px;">Cancel</a>
+  </div>
+</body>
+</html>

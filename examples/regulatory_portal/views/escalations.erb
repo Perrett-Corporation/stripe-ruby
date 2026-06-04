@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Case Escalations</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .btn { padding: 5px 10px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    .badge { padding: 3px 6px; border-radius: 3px; font-size: 0.8em; color: white; }
+    .badge-Critical { background-color: red; }
+    .badge-High { background-color: orange; }
+    .badge-Medium { background-color: #fdda0d; color: black; }
+    .badge-Resolved { background-color: green; }
+    .notice { background: #e2e8f0; padding: 10px; margin-bottom: 20px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Case Escalations & Supervisor Review</h1>
+
+  <% if @new_alerts && !@new_alerts.empty? %>
+    <div class="notice">
+      <strong>New Escalations Triggered:</strong> <%= @new_alerts.count %> cases flagged for review.
+    </div>
+  <% end %>
+
+  <% if session[:message] %>
+    <div style="background-color: #d4edda; color: #155724; padding: 10px; margin-bottom: 20px;">
+        <%= session[:message] %>
+    </div>
+    <% session[:message] = nil %>
+  <% end %>
+
+  <h2>Active Escalations</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Case / Subject</th>
+        <th>Severity</th>
+        <th>Triggers (Reasons)</th>
+        <th>Supervisor</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @escalations.each do |esc| %>
+        <tr>
+          <td><%= esc[:id] %></td>
+          <td>
+            <strong><%= esc[:case_id] %></strong><br>
+            <%= esc[:subject_name] %>
+          </td>
+          <td><span class="badge badge-<%= esc[:severity] %>"><%= esc[:severity] %></span></td>
+          <td>
+            <ul>
+                <% esc[:reasons].each do |reason| %>
+                    <li><%= reason %></li>
+                <% end %>
+            </ul>
+          </td>
+          <td><%= esc[:supervisor_email] %></td>
+          <td><%= esc[:status] %></td>
+          <td>
+            <% if esc[:status] != "Resolved" %>
+                <form action="/escalations/resolve" method="post">
+                    <input type="hidden" name="escalation_id" value="<%= esc[:id] %>">
+                    <input type="text" name="resolution_note" placeholder="Resolution notes..." required style="width: 150px;">
+                    <button type="submit" class="btn">Resolve</button>
+                </form>
+            <% else %>
+                <em>Resolved at <%= esc[:resolved_at].strftime("%H:%M") %></em><br>
+                <small><%= esc[:resolution_note] %></small>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <br>
+  <a href="/" style="display: block; margin-top: 20px;">Return to Dashboard</a>
+</body>
+</html>

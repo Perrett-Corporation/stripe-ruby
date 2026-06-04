@@ -1,0 +1,12 @@
+source "https://rubygems.org"
+
+# Use the local stripe gem if possible, otherwise fetch from rubygems
+# gem "stripe", path: "../../"
+gem "stripe"
+
+gem "builder"
+gem "dotenv"
+gem "prawn"
+gem "sinatra"
+gem 'rackup'
+gem 'puma'

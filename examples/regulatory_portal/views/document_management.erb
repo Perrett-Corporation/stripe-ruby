@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Secure Document Management</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f8f9fa; }
+    h1, h2, h3 { color: #333; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; font-size: 0.9em; }
+    th { background-color: #f4f4f4; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; margin: 1px; }
+    .badge-fraud     { background: #dc3545; color: white; }
+    .badge-ml        { background: #6f42c1; color: white; }
+    .badge-shell     { background: #fd7e14; color: white; }
+    .badge-sanctions { background: #dc3545; color: white; }
+    .badge-pep       { background: #e83e8c; color: white; }
+    .badge-default   { background: #6c757d; color: white; }
+    .btn { padding: 8px 16px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 0.9em; }
+    .btn-danger  { background: #dc3545; }
+    .btn-warning { background: #ffc107; color: black; }
+    .btn-success { background: #28a745; }
+    .btn-info    { background: #17a2b8; }
+    .btn-sm { padding: 4px 10px; font-size: 0.8em; }
+    .alert { padding: 12px; margin-bottom: 15px; border-radius: 5px; }
+    .alert-info   { background: #d1ecf1; color: #0c5460; }
+    .alert-danger { background: #f8d7da; color: #721c24; }
+    form.inline { display: inline; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 0.9em; }
+    input[type=text], input[type=file], select {
+      width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .ocr-snippet { font-size: 0.8em; color: #555; background: #f8f9fa; padding: 6px; border-radius: 4px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+    .no-docs { color: #888; font-style: italic; }
+    .pattern-tag { font-size: 0.75em; }
+    .upload-area { border: 2px dashed #ced4da; border-radius: 8px; padding: 20px; text-align: center; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>Secure Document Management</h1>
+  <p><a href="/">&larr; Back to Dashboard</a></p>
+
+  <% if session[:message] %>
+    <div class="alert alert-info"><%= session[:message] %></div>
+    <% session[:message] = nil %>
+  <% end %>
+  <% if session[:error] %>
+    <div class="alert alert-danger"><%= session[:error] %></div>
+    <% session[:error] = nil %>
+  <% end %>
+
+  <div class="grid-2">
+    <!-- Upload Form -->
+    <div class="card">
+      <h2>Upload Evidence Document</h2>
+      <p style="font-size:0.85em; color:#555;">
+        Documents are AES-256-GCM encrypted at rest. Enable OCR to automatically
+        extract text and detect fraud patterns, which are then tagged to the
+        associated investigation case.
+      </p>
+      <form action="/documents/upload" method="post" enctype="multipart/form-data">
+        <div class="upload-area form-group">
+          <input type="file" name="file" required>
+          <p style="font-size:0.8em; color:#888; margin-top:8px;">Supported: PDF, images, text files</p>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category">
+            <% DocumentVaultService::CATEGORIES.each do |cat| %>
+              <option value="<%= cat %>"><%= cat %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Entity ID (optional)</label>
+          <input type="text" name="entity_id" placeholder="e.g. cus_123">
+        </div>
+        <div class="form-group">
+          <label>Link to Investigation Case (optional)</label>
+          <select name="case_id">
+            <option value="">-- None --</option>
+            <% @open_cases.each do |c| %>
+              <option value="<%= c[:id] %>"><%= c[:id] %> – <%= c[:subject_name] %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="run_ocr" value="1"> Run OCR &amp; Fraud Pattern Detection immediately
+          </label>
+        </div>
+        <button type="submit" class="btn btn-success">Upload &amp; Encrypt Document</button>
+      </form>
+    </div>
+
+    <!-- Stats / Legend -->
+    <div class="card">
+      <h2>Vault Summary</h2>
+      <% total = @all_documents.count %>
+      <% ocr_done = @all_documents.count { |d| d.ocr_text } %>
+      <% with_patterns = @all_documents.count { |d| d.detected_patterns.any? } %>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+        <div style="text-align:center; padding:12px; background:#f8f9fa; border-radius:6px;">
+          <div style="font-size:2em; font-weight:bold; color:#007bff;"><%= total %></div>
+          <div style="font-size:0.85em;">Total Documents</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:#f8f9fa; border-radius:6px;">
+          <div style="font-size:2em; font-weight:bold; color:#28a745;"><%= ocr_done %></div>
+          <div style="font-size:0.85em;">OCR Processed</div>
+        </div>
+        <div style="text-align:center; padding:12px; background:#f8f9fa; border-radius:6px;">
+          <div style="font-size:2em; font-weight:bold; color:#dc3545;"><%= with_patterns %></div>
+          <div style="font-size:0.85em;">Fraud Patterns</div>
+        </div>
+      </div>
+
+      <h3>Detected Pattern Types</h3>
+      <% pattern_counts = Hash.new(0) %>
+      <% @all_documents.each { |d| d.detected_patterns.each { |p| pattern_counts[p[:label]] += p[:count] } } %>
+      <% if pattern_counts.any? %>
+        <% pattern_counts.sort_by { |_,v| -v }.each do |label, count| %>
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span class="badge badge-default pattern-tag"><%= label %></span>
+            <span style="font-size:0.85em;"><%= count %> occurrence(s)</span>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="no-docs">No fraud patterns detected yet.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Document List -->
+  <div class="card">
+    <div class="section-header">
+      <h2>Document Vault</h2>
+      <span style="font-size:0.85em; color:#555;">All documents are encrypted with AES-256-GCM</span>
+    </div>
+    <% if @all_documents.any? %>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Filename</th>
+            <th>Category</th>
+            <th>Entity ID</th>
+            <th>Case ID</th>
+            <th>Uploaded</th>
+            <th>OCR &amp; Patterns</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @all_documents.sort_by { |d| d.uploaded_at }.reverse.each do |doc| %>
+            <tr>
+              <td><code style="font-size:0.75em;"><%= doc.id %></code></td>
+              <td>
+                📄 <%= doc.filename %>
+                <% if doc.tagged_cases.any? %>
+                  <br><small style="color:#888;">Tagged: <%= doc.tagged_cases.join(', ') %></small>
+                <% end %>
+              </td>
+              <td>
+                <span class="badge badge-default"><%= doc.category %></span>
+              </td>
+              <td><code style="font-size:0.8em;"><%= doc.entity_id %></code></td>
+              <td>
+                <% if doc.case_id %>
+                  <a href="/entity_timeline/<%= doc.case_id %>" style="font-size:0.85em;"><%= doc.case_id %></a>
+                <% else %>
+                  <span style="color:#aaa;">—</span>
+                <% end %>
+              </td>
+              <td><small><%= doc.uploaded_at.strftime('%Y-%m-%d %H:%M') %></small></td>
+              <td>
+                <% if doc.ocr_text %>
+                  <span style="color:#28a745;">✓ OCR Done</span>
+                  <% if doc.detected_patterns.any? %>
+                    <br>
+                    <% doc.detected_patterns.each do |p| %>
+                      <span class="badge badge-fraud pattern-tag" title="<%= p[:snippet] %>"><%= p[:label] %></span>
+                    <% end %>
+                  <% else %>
+                    <br><small style="color:#888;">No patterns</small>
+                  <% end %>
+                <% else %>
+                  <span style="color:#aaa;">Not processed</span>
+                <% end %>
+              </td>
+              <td>
+                <% unless doc.ocr_text %>
+                  <form action="/documents/<%= doc.id %>/ocr" method="post" class="inline">
+                    <button type="submit" class="btn btn-info btn-sm">Run OCR</button>
+                  </form>
+                <% end %>
+                <% if @open_cases.any? %>
+                  <form action="/documents/<%= doc.id %>/tag_case" method="post" class="inline" style="margin-top:4px;">
+                    <select name="case_id" style="font-size:0.8em; padding:3px; width:auto; display:inline;">
+                      <% @open_cases.each do |c| %>
+                        <option value="<%= c[:id] %>"><%= c[:id] %></option>
+                      <% end %>
+                    </select>
+                    <button type="submit" class="btn btn-warning btn-sm">Tag Case</button>
+                  </form>
+                <% end %>
+              </td>
+            </tr>
+            <% if doc.ocr_text %>
+            <tr style="background:#fafafa;">
+              <td colspan="8" style="padding: 8px 12px;">
+                <strong style="font-size:0.85em;">OCR Extract (first 300 chars):</strong>
+                <div class="ocr-snippet"><%= doc.ocr_text.to_s[0..299] %><%= doc.ocr_text.to_s.length > 300 ? '…' : '' %></div>
+              </td>
+            </tr>
+            <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="no-docs">No documents in the vault yet. Upload a document using the form above.</p>
+    <% end %>
+  </div>
+
+  <!-- Case Annotations -->
+  <div class="card">
+    <h2>Case-Level Fraud Pattern Annotations</h2>
+    <p style="font-size:0.85em; color:#555;">
+      When an OCR-processed document is tagged to an investigation case, its detected
+      fraud patterns are automatically annotated here for investigator review.
+    </p>
+    <% any_annotations = false %>
+    <% @open_cases.each do |c| %>
+      <% annotations = DocumentVaultService::CASE_ANNOTATIONS[c[:id]] || [] %>
+      <% next if annotations.empty? %>
+      <% any_annotations = true %>
+      <div style="border: 1px solid #dee2e6; border-radius:6px; margin-bottom:12px; padding:12px;">
+        <h3 style="margin-top:0;">
+          Case <%= c[:id] %> – <%= c[:subject_name] %>
+          <span style="font-size:0.75em; font-weight:normal; color:#666;">(<%= annotations.count %> annotation(s))</span>
+        </h3>
+        <table>
+          <thead>
+            <tr><th>Document</th><th>Pattern</th><th>Context Snippet</th><th>Tagged At</th></tr>
+          </thead>
+          <tbody>
+            <% annotations.each do |ann| %>
+              <tr>
+                <td><code style="font-size:0.8em;"><%= ann[:filename] || ann[:doc_id] %></code></td>
+                <td><span class="badge badge-fraud"><%= ann[:label] %></span></td>
+                <td><em style="font-size:0.85em; color:#555;"><%= ann[:snippet] %></em></td>
+                <td><small><%= ann[:tagged_at].strftime('%Y-%m-%d %H:%M') %></small></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+    <% unless any_annotations %>
+      <p class="no-docs">No fraud patterns have been auto-tagged to cases yet.</p>
+    <% end %>
+  </div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .button { padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .badge { background: #17a2b8; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; }
+</style>
+<div class="header">
+  <h1>Immutable Audit Logs</h1>
+  <div class="actions">
+    <a href="/audit_log/export" class="button">Export CSV</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent Activity</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp (UTC)</th>
+        <th>User ID</th>
+        <th>Action</th>
+        <th>Entity ID</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @logs.each do |log| %>
+        <tr>
+          <td><%= log.timestamp %></td>
+          <td><%= log.user_id %></td>
+          <td><span class="badge"><%= log.action %></span></td>
+          <td><a href="/entity_timeline/<%= log.entity_id %>"><%= log.entity_id %></a></td>
+          <td>
+            <pre style="font-size: 0.8em;"><%= JSON.pretty_generate(log.details) %></pre>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
