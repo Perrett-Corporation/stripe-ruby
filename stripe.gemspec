@@ -16,6 +16,10 @@ Gem::Specification.new do |s|
   s.homepage = "https://stripe.com/docs/api?lang=ruby"
   s.license = "MIT"
 
+  s.add_dependency "csv"
+  s.add_dependency "prawn"
+  s.add_dependency "matrix"
+
   s.metadata = {
     "bug_tracker_uri" => "https://github.com/stripe/stripe-ruby/issues",
     "changelog_uri" =>

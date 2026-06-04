@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "minitest/unit"
 require "minitest/autorun"
 require "stripe"
 
@@ -140,7 +141,7 @@ class TestDeFiYieldScanner < Minitest::Test
     optimizer = Stripe::DeFi::YieldOptimizer.new(wallets)
     analysis = optimizer.portfolio_yield_analysis
 
-    assert analysis[:total_portfolio_value] == 11000
+    assert analysis[:total_portfolio_value] == 11_000
     assert analysis[:total_potential_annual_yield] > 0
     assert analysis[:average_portfolio_apy] > 0
     assert analysis[:wallet_count] == 2
@@ -153,7 +154,7 @@ class TestDeFiYieldScanner < Minitest::Test
     # Matrix should have protocol keys
     assert matrix.count > 0
     # Check that at least aave has yields
-    assert matrix.any? { |protocol, chains| chains.count > 0 }
+    assert(matrix.any? { |protocol, chains| chains.count > 0 })
   end
 
   def test_defi_convenience_method_scan_yields

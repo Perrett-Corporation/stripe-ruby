@@ -202,7 +202,7 @@ module Stripe
 
       def compliance_view(transaction)
         # Compliance officer view (without internal metadata)
-        transaction.except(:metadata)
+        transaction.reject { |key, _| key == :metadata }
       end
 
       def self.instance
@@ -210,8 +210,150 @@ module Stripe
       end
     end
 
+    class PayoutManager
+      def create_payout(amount:, currency:, destination: nil, description: nil,
+                        statement_descriptor: nil, metadata: {}, method: nil,
+                        source_type: nil)
+        RBAC::Policy.require_permission!("bank.create")
+
+        params = {
+          amount: amount,
+          currency: currency,
+          destination: destination,
+          description: description,
+          statement_descriptor: statement_descriptor,
+          metadata: metadata,
+          method: method,
+          source_type: source_type,
+        }.compact
+
+        payout = Stripe::Payout.create(params)
+        log_audit(
+          action: "create_payout",
+          resource_type: "payout",
+          resource_id: payout.id,
+          changes: params,
+          module_name: "banking",
+          risk_level: "medium"
+        )
+
+        payout
+      end
+
+      def list_payouts(params = {})
+        RBAC::Policy.require_permission!("bank.view")
+
+        payouts = Stripe::Payout.list(params)
+        log_audit(
+          action: "list_payouts",
+          resource_type: "payout",
+          changes: params,
+          module_name: "banking"
+        )
+
+        payouts
+      end
+
+      def retrieve_payout(payout_id)
+        RBAC::Policy.require_permission!("bank.view")
+
+        payout = Stripe::Payout.retrieve(payout_id)
+        log_audit(
+          action: "retrieve_payout",
+          resource_type: "payout",
+          resource_id: payout_id,
+          module_name: "banking"
+        )
+
+        payout
+      end
+
+      def update_payout(payout_id, params = {})
+        RBAC::Policy.require_permission!("bank.edit")
+
+        payout = Stripe::Payout.update(payout_id, params)
+        log_audit(
+          action: "update_payout",
+          resource_type: "payout",
+          resource_id: payout_id,
+          changes: params,
+          module_name: "banking"
+        )
+
+        payout
+      end
+
+      def cancel_payout(payout_id)
+        RBAC::Policy.require_permission!("bank.edit")
+
+        payout = Stripe::Payout.cancel(payout_id)
+        log_audit(
+          action: "cancel_payout",
+          resource_type: "payout",
+          resource_id: payout_id,
+          module_name: "banking",
+          risk_level: "high"
+        )
+
+        payout
+      end
+
+      def reverse_payout(payout_id)
+        RBAC::Policy.require_permission!("bank.edit")
+
+        payout = Stripe::Payout.reverse(payout_id)
+        log_audit(
+          action: "reverse_payout",
+          resource_type: "payout",
+          resource_id: payout_id,
+          module_name: "banking",
+          risk_level: "high"
+        )
+
+        payout
+      end
+
+      def self.instance
+        @instance ||= new
+      end
+
+      private
+
+      def log_audit(action:, resource_type:, resource_id: nil, changes: {}, module_name: "banking", risk_level: "low")
+        event = if RBAC::Context.current
+                  Audit::AuditEvent.from_context(
+                    action: action,
+                    resource_type: resource_type,
+                    resource_id: resource_id,
+                    changes: changes,
+                    risk_level: risk_level,
+                    module_name: module_name
+                  )
+                else
+                  Audit::AuditEvent.new(
+                    user_id: "system",
+                    user_name: "system",
+                    action: action,
+                    resource_type: resource_type,
+                    resource_id: resource_id,
+                    changes: changes,
+                    risk_level: risk_level,
+                    module_name: module_name
+                  )
+                end
+
+        Audit.log_event(event)
+      rescue StandardError
+        nil
+      end
+    end
+
     def self.transactions
       TransactionManager.instance
+    end
+
+    def self.payouts
+      PayoutManager.instance
     end
   end
 end

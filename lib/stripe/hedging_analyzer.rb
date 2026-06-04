@@ -231,8 +231,6 @@ module Stripe
 
     def recommend_hedge_type(currency)
       case currency
-      when "EUR", "GBP"
-        "Forward Contract"
       when "JPY"
         "Options Strategy"
       when "AUD", "CAD"

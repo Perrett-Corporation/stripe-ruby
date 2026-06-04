@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "minitest/unit"
 require "minitest/autorun"
 require "stripe"
 
@@ -308,6 +309,34 @@ class TestRBACSystem < Minitest::Test
       user_id: "user2",
       user_name: "Bob",
       role: :auditor
+    ) do
+      txns = Stripe::Banking.transactions.list_transactions(account_id: "acc123")
+      assert_equal 1, txns.count
+      assert txns.first.key?(:id)
+      assert txns.first.key?(:amount)
+      refute txns.first.key?(:metadata)
+    end
+  end
+
+  def test_bank_transaction_list_compliance_view
+    Stripe::RBAC::Context.with_context(
+      user_id: "user1",
+      user_name: "Alice",
+      role: :treasury_manager
+    ) do
+      Stripe::Banking.transactions.create_transaction(
+        account_id: "acc123",
+        amount: 1500,
+        currency: "USD",
+        metadata: { internal_flag: true }
+      )
+      Stripe::RBAC::Context.clear
+    end
+
+    Stripe::RBAC::Context.with_context(
+      user_id: "user2",
+      user_name: "Carol",
+      role: :compliance_officer
     ) do
       txns = Stripe::Banking.transactions.list_transactions(account_id: "acc123")
       assert_equal 1, txns.count

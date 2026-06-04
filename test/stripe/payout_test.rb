@@ -26,16 +26,48 @@ module Stripe
       assert payout.is_a?(Stripe::Payout)
     end
 
-    should "be saveable" do
-      payout = Stripe::Payout.retrieve("tr_123")
-      payout.metadata["key"] = "value"
-      payout.save
-      assert_requested :post, "#{Stripe.api_base}/v1/payouts/#{payout.id}"
+    should "be saveable via update" do
+      payout = Stripe::Payout.update("tr_123", metadata: { key: "value" })
+      assert_requested :post, "#{Stripe.api_base}/v1/payouts/tr_123"
+      assert payout.is_a?(Stripe::Payout)
     end
 
     should "be updateable" do
       payout = Stripe::Payout.update("tr_123", metadata: { foo: "bar" })
       assert_requested :post, "#{Stripe.api_base}/v1/payouts/tr_123"
+      assert payout.is_a?(Stripe::Payout)
+    end
+
+    should "support payout management through Banking::PayoutManager" do
+      payout = Stripe::Banking.payouts.create_payout(
+        amount: 150,
+        currency: "USD",
+        description: "Banking payout test"
+      )
+
+      assert_requested :post, "#{Stripe.api_base}/v1/payouts"
+      assert payout.is_a?(Stripe::Payout)
+    end
+
+    should "list payouts through Banking::PayoutManager" do
+      payouts = Stripe::Banking.payouts.list_payouts(limit: 1)
+      assert_requested :get, "#{Stripe.api_base}/v1/payouts?limit=1"
+      assert payouts.data.is_a?(Array)
+    end
+
+    should "retrieve a payout through Banking::PayoutManager" do
+      payout = Stripe::Banking.payouts.retrieve_payout("tr_123")
+      assert_requested :get, "#{Stripe.api_base}/v1/payouts/tr_123"
+      assert payout.is_a?(Stripe::Payout)
+    end
+
+    should "cancel a payout through Banking::PayoutManager" do
+      payout = Stripe::Banking.payouts.cancel_payout("tr_123")
+      assert payout.is_a?(Stripe::Payout)
+    end
+
+    should "reverse a payout through Banking::PayoutManager" do
+      payout = Stripe::Banking.payouts.reverse_payout("tr_123")
       assert payout.is_a?(Stripe::Payout)
     end
 

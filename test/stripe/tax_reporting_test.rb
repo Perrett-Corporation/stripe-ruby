@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "minitest/unit"
 require "minitest/autorun"
 require "stripe"
 require "date"

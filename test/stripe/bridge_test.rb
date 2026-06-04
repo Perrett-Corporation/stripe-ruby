@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "minitest/unit"
 require "minitest/autorun"
 require "stripe"
 
@@ -338,7 +339,7 @@ class TestBridgeModule < Minitest::Test
   def test_gas_fee_estimator_congestion_levels
     estimator = Stripe::Bridge::GasFeeEstimator.new(:ethereum, :arbitrum)
     fee_normal = estimator.estimate_gas_fee
-    
+
     estimator.set_congestion_level(:high)
     fee_high = estimator.estimate_gas_fee
     assert fee_high[:estimated_fee] > fee_normal[:estimated_fee]
@@ -382,10 +383,10 @@ class TestBridgeModule < Minitest::Test
   def test_execution_time_priority_impact
     estimator = Stripe::Bridge::ExecutionTimeEstimator.new(:ethereum, :arbitrum)
     time_standard = estimator.estimate_complete_path_time[:total_execution_time]
-    
+
     estimator.set_priority_level(:high)
     time_high = estimator.estimate_complete_path_time[:total_execution_time]
-    
+
     estimator.set_priority_level(:low)
     time_low = estimator.estimate_complete_path_time[:total_execution_time]
 
@@ -426,7 +427,7 @@ class TestBridgeModule < Minitest::Test
     estimator = Stripe::Bridge::ExecutionTimeEstimator.new(:ethereum, :arbitrum)
     result_low = estimator.estimate_complete_path_time
     time_low = result_low[:total_execution_time]
-    
+
     estimator.set_priority_level(:high)
     result_high = estimator.estimate_complete_path_time
     time_high = result_high[:total_execution_time]
@@ -437,7 +438,7 @@ class TestBridgeModule < Minitest::Test
   def test_execution_time_compare_priorities
     estimator = Stripe::Bridge::ExecutionTimeEstimator.new(:ethereum, :arbitrum)
     comparison = estimator.compare_priorities
-    
+
     assert_kind_of Array, comparison
     assert comparison.count > 0
     priorities = comparison.map { |c| c[:priority] }
@@ -453,10 +454,11 @@ class TestBridgeModule < Minitest::Test
   end
 
   def test_execution_time_all_chains_supported
-    from_chains = [:ethereum, :arbitrum, :polygon]
+    from_chains = %i[ethereum arbitrum polygon]
     from_chains.each do |from_chain|
       from_chains.each do |to_chain|
         next if from_chain == to_chain
+
         estimator = Stripe::Bridge::ExecutionTimeEstimator.new(from_chain, to_chain)
         result = estimator.estimate_complete_path_time
         assert result[:total_execution_time] > 0, "Failed for #{from_chain} -> #{to_chain}"

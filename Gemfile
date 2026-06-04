@@ -2,9 +2,14 @@
 
 source "https://rubygems.org"
 
+gem "csv"
+gem "prawn"
+gem "matrix"
+
 gemspec
 
 group :development do
+  gem "minitest", "~> 5.0"
   gem "mocha", "~> 1.16.0"
   gem "rack", ">= 2.0.6"
   gem "rake"

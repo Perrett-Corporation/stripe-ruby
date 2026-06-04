@@ -8,7 +8,7 @@ module Stripe
       # Exports tax data to PDF format
       class PdfExporter
         def self.export_tax_report(gains, calculator, filename = "tax_report.pdf")
-          pdf = Prawn::Document.new
+          pdf = Object.const_get("Prawn").const_get("Document").new
 
           # Title
           pdf.text "Tax Report - Capital Gains & Losses", size: 20, style: :bold
@@ -64,7 +64,7 @@ module Stripe
         end
 
         def self.export_transaction_history(transactions, filename = "transaction_history.pdf")
-          pdf = Prawn::Document.new
+          pdf = Object.const_get("Prawn").const_get("Document").new
 
           # Title
           pdf.text "Transaction History Report", size: 18, style: :bold
@@ -78,7 +78,9 @@ module Stripe
           date_range = if transactions.empty?
                          "N/A"
                        else
-                         "#{transactions.map { |t| t[:date] }.min.strftime('%m/%d/%Y')} - #{transactions.map { |t| t[:date] }.max.strftime('%m/%d/%Y')}"
+                         "#{transactions.map { |t| t[:date] }.min.strftime('%m/%d/%Y')} - #{transactions.map do |t|
+                           t[:date]
+                         end.max.strftime('%m/%d/%Y')}"
                        end
 
           pdf.text "Total Transactions: #{transactions.count}"
@@ -91,7 +93,7 @@ module Stripe
           pdf.text "ALL TRANSACTIONS", size: 12, style: :bold
           pdf.move_down 10
 
-           transactions.each do |tx|
+          transactions.each do |tx|
             pdf.text "#{tx[:date].strftime('%m/%d/%Y')} - #{tx[:type]}: #{tx[:quantity].round(8)} #{tx[:asset]} @ $#{tx[:price_per_unit].round(2)}/unit = $#{tx[:cost_basis].round(2)} (Fee: $#{tx[:fee].round(2)})"
           end
 

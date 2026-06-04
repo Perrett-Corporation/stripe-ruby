@@ -156,7 +156,7 @@ module Stripe
       # Try to use Prawn if available, otherwise generate data structure
       begin
         require "prawn"
-        pdf = Prawn::Document.new
+        pdf = Object.const_get("Prawn").const_get("Document").new
 
         pdf.text "Treasury Financial Report", size: 24, style: :bold
         pdf.move_down 20
@@ -188,6 +188,7 @@ module Stripe
       liquidity = @overview.total_liquidity
       daily_pos = @overview.net_daily_position
       exposure = @overview.currency_exposure
+      highest_exposure_currency, = exposure.max_by { |_curr, data| data[:amount] }
 
       {
         key_metrics: {
@@ -196,6 +197,8 @@ module Stripe
           accounts_monitored: @overview.account_summary.count,
           currencies_active: liquidity.count,
           days_in_period: (end_date - start_date).to_i + 1,
+          total_exposure: format_currency(exposure.values.sum { |d| d[:amount] }),
+          highest_exposure_currency: highest_exposure_currency || "N/A",
         },
         summary_text: "This report provides a consolidated view of treasury positions for the period #{start_date} through #{end_date}.",
         date_range: { start: start_date.to_s, end: end_date.to_s },
@@ -223,6 +226,7 @@ module Stripe
       end
 
       {
+        period: { start: start_date.to_s, end: end_date.to_s },
         timestamp: Time.now.utc.iso8601,
         total_liquidity: format_currency(liquidity.values.sum),
         by_currency: by_currency,
@@ -242,6 +246,7 @@ module Stripe
       open = @reconciliation.get_discrepancies(status: :open)
 
       {
+        period: { start: start_date.to_s, end: end_date.to_s },
         timestamp: Time.now.utc.iso8601,
         metrics: {
           total_discrepancies: discrepancies.count,
@@ -266,6 +271,7 @@ module Stripe
       exposure = @overview.currency_exposure
 
       {
+        period: { start: start_date.to_s, end: end_date.to_s },
         timestamp: Time.now.utc.iso8601,
         total_exposure_usd: calculate_total_usd_exposure(exposure),
         by_currency: exposure.map do |curr, data|
@@ -446,9 +452,7 @@ module Stripe
       case value
       when Float
         value.round(2).to_s
-      when Hash
-        value.inspect
-      when Array
+      when Hash, Array
         value.inspect
       else
         value.to_s

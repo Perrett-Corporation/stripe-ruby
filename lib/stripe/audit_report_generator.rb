@@ -119,7 +119,7 @@ module Stripe
 
       begin
         require "prawn"
-        pdf = Prawn::Document.new
+        pdf = Object.const_get("Prawn").const_get("Document").new
 
         # Header
         pdf.text "Audit Report", size: 24, style: :bold

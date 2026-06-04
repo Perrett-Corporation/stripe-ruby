@@ -88,6 +88,9 @@ require "stripe/tax"
 # Portfolio Manager & Insights
 require "stripe/portfolio"
 
+# Cross-Module Integrations
+require "stripe/integrations"
+
 # OAuth
 require "stripe/oauth"
 require "stripe/services/oauth_service"
